@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Enable globbing to include hidden directories.
+shopt -s dotglob
+# Return null when no match is found.
+shopt -s nullglob
+
+for dir in */ ; do
+    if [ -d "$dir" ]; then
+        count=$(find "$dir" -type f | wc -l)
+        echo "$dir: $count files"
+    fi
+done
+
+# Set globbing options back to default.
+shopt -u dotglob
+shopt -u nullglob
