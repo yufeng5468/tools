@@ -1,0 +1,70 @@
+#!python
+import os
+import argparse
+import hashlib
+import time
+
+def hash_file(filepath):
+    """Compute the SHA-256 hash of a file."""
+    hash_sha256 = hashlib.sha256()
+    with open(filepath, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_sha256.update(chunk)
+    return hash_sha256.hexdigest()
+
+def compare_directories(src, dst):
+    """Recursively compare the contents of src and dst directories.  Check whether src is a subset of dst."""
+    src_files = {}
+    dst_files = {}
+
+    file_count = 0
+    start_time = time.time()
+
+    # Process source directory.
+    print(f"Processing {src=}")
+    for root, dirs, files in os.walk(src):
+        for file in files:
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, src)
+            src_files[relative_path] = hash_file(full_path)
+            file_count += 1
+            if file_count % 1000 == 0:
+                elapsed_time = time.time() - start_time
+                rate = file_count / (elapsed_time / 60)
+                print(f"Hashed {file_count} files at {rate:.2f} files/minute")
+
+    # Reset for destination directory.
+    file_count = 0
+    start_time = time.time()
+
+    # Process destination directory.
+    print(f"Processing {dst=}")
+    for root, dirs, files in os.walk(dst):
+        for file in files:
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, dst)
+            dst_files[relative_path] = hash_file(full_path)
+            file_count += 1
+            if file_count % 1000 == 0:
+                elapsed_time = time.time() - start_time
+                rate = file_count / (elapsed_time / 60)
+                print(f"Hashed {file_count} files at {rate:.2f} files/minute")
+
+    # Compare files.
+    for file, src_hash in src_files.items():
+        if file not in dst_files:
+            print(f"File {file} is in {src} but not in {dst}.")
+        elif src_hash != dst_files[file]:
+            print(f"File {file} has a different hash in {src} compared to {dst}.")
+
+def main():
+    parser = argparse.ArgumentParser(description="[Deprecated] Compare contents of two directories.\n\nJust use `rclone check SOURCE DESTINATION --checkers=4 --one-way` instead", formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("-s", "--source", required=True, help="Path to source directory")
+    parser.add_argument("-d", "--destination", required=True, help="Path to destination directory")
+
+    args = parser.parse_args()
+
+    compare_directories(args.source, args.destination)
+
+if __name__ == "__main__":
+    main()
